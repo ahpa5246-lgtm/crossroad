@@ -1,0 +1,76 @@
+Options -Indexes
+ServerSignature Off
+
+# ── Block sensitive files ────────────────────────────────────
+<FilesMatch "\.(env|sqlite|sqlite3|db|sql|log|sh|lock|md)$">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
+
+# ── URL Routing ──────────────────────────────────────────────
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+
+    # Block direct access to internal folders
+    RewriteRule ^(database|config|controllers|helpers|middleware|views)(/|$) - [F,L]
+
+    # Block PHP execution in uploads
+    RewriteRule ^public/uploads/.*\.(php|php5|phtml|cgi|pl|py)$ - [F,L]
+
+    # Serve offline.html directly (PWA offline fallback)
+    RewriteRule ^offline\.html$ public/offline.html [L]
+
+    # Serve static files directly
+    RewriteCond %{REQUEST_FILENAME} -f
+    RewriteRule ^ - [L]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # All other requests → index.php
+    RewriteRule ^ index.php [QSA,L]
+</IfModule>
+
+# ── Custom Error Pages ───────────────────────────────────────
+ErrorDocument 403 /index.php
+ErrorDocument 404 /index.php
+ErrorDocument 500 /index.php
+ErrorDocument 503 /index.php
+
+# ── Security Headers ─────────────────────────────────────────
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set X-XSS-Protection "1; mode=block"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set Permissions-Policy "camera=(), microphone=(), geolocation=()"
+    Header unset Server
+    Header unset X-Powered-By
+    # PWA manifest CORS
+    <FilesMatch "manifest\.json$">
+        Header set Access-Control-Allow-Origin "*"
+    </FilesMatch>
+</IfModule>
+
+# ── Compression ──────────────────────────────────────────────
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/css application/javascript application/json text/plain
+    AddOutputFilterByType DEFLATE application/manifest+json
+</IfModule>
+
+# ── Browser Cache ────────────────────────────────────────────
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType image/png  "access plus 1 month"
+    ExpiresByType image/jpeg "access plus 1 month"
+    ExpiresByType image/webp "access plus 1 month"
+    ExpiresByType text/css   "access plus 1 week"
+    ExpiresByType application/javascript "access plus 1 week"
+    ExpiresByType font/woff2 "access plus 1 year"
+    ExpiresByType application/manifest+json "access plus 1 day"
+</IfModule>
+
+# ── MIME Types ───────────────────────────────────────────────
+<IfModule mod_mime.c>
+    AddType application/manifest+json .json
+</IfModule>
